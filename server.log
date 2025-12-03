@@ -33,3 +33,7 @@ The attention mask is not set and cannot be inferred from input because pad toke
  * Restarting with stat
  * Debugger is active!
  * Debugger PIN: 124-614-488
+ * Detected change in '/workspaces/AGI-/agi/coordinator.py', reloading
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 124-614-488

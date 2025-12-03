@@ -54,10 +54,10 @@
                 if (data && data.answer) {
                     addMessage("agi", data.answer);
                 } else {
-                    addMessage("agi", "Pas de réponse reçue.");
+                    addMessage("agi", "No answer received.");
                 }
             } catch (e) {
-                addMessage("AGI", "Erreur réseau: " + e.message);
+                addMessage("agi", "Network error: " + e.message);
                 console.error("Fetch error:", e);
             }
         }
