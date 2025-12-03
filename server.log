@@ -31,3 +31,6 @@ The attention mask is not set and cannot be inferred from input because pad toke
  * Debugger PIN: 124-614-488
 The attention mask is not set and cannot be inferred from input because pad token is same as eos token. As a consequence, you may observe unexpected behavior. Please pass your input's `attention_mask` to obtain reliable results.
 127.0.0.1 - - [03/Dec/2025 22:45:59] "POST /api/chat HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 22:49:28] "POST /api/chat HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 22:49:46] "POST /api/chat HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 22:50:14] "POST /api/chat HTTP/1.1" 200 -
