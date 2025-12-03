@@ -11,3 +11,8 @@ Press CTRL+C to quit
 The attention mask is not set and cannot be inferred from input because pad token is same as eos token. As a consequence, you may observe unexpected behavior. Please pass your input's `attention_mask` to obtain reliable results.
 127.0.0.1 - - [03/Dec/2025 22:21:34] "POST /api/chat HTTP/1.1" 200 -
 127.0.0.1 - - [03/Dec/2025 22:21:57] "POST /api/chat HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 22:22:28] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 22:22:29] "GET /static/style.css HTTP/1.1" 304 -
+127.0.0.1 - - [03/Dec/2025 22:22:38] "POST /api/chat HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 22:23:00] "POST /api/chat HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 22:23:00] "POST /api/chat HTTP/1.1" 200 -
