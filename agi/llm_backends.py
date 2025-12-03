@@ -47,7 +47,18 @@ try:
             toks = tok.encode(prompt, return_tensors='pt')
             out = model.generate(toks, max_length=min(toks.shape[1]+max_tokens, 512), do_sample=True, top_k=40, top_p=0.92)
             s = tok.decode(out[0], skip_special_tokens=True)
-            return s[len(prompt):].strip()
+            gen = s[len(prompt):].strip()
+            # keep only 1-2 sentences to avoid long, off-topic generations
+            try:
+                import re
+                parts = re.split(r'(?<=[.!?])\s+', gen)
+                if len(parts) > 2:
+                    gen = ' '.join(parts[:2]).strip()
+            except Exception:
+                # fallback: simple dot-split
+                parts = gen.split('.')
+                gen = ('.'.join(parts[:2])).strip()
+            return gen
         except Exception as e:
             logger.warning('gpt2_gen failed: %s', e)
             return ''
