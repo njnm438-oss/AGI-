@@ -19,7 +19,10 @@ def test_train_smoke():
     for i in range(64):
         s = np.random.randn(16).astype('float32')
         a = np.random.randn(8).astype('float32')
-        s2 = s + 0.1 * a[:16]
+        # pad or truncate action to state length to avoid broadcasting errors
+        a_p = np.zeros_like(s)
+        a_p[:len(a)] = a
+        s2 = s + 0.1 * a_p
         buf.add((s,a,0.0,s2,False))
     model = WorldModel(16,8)
     learner = Learner(model, buf)

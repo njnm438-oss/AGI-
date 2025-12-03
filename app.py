@@ -14,7 +14,6 @@ agent = AGIAgentPro()
 
 # Background learning/collection (lightweight, daemon)
 _replay = ReplayBuffer(capacity=50000)
-_learner = Learner(getattr(agent, 'world_model', None) or None, _replay, device=getattr(agent.config, 'device', 'cpu'))
 _collector_stop = threading.Event()
 _learner_stop = threading.Event()
 _collector_count = 0
