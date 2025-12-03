@@ -9,3 +9,4 @@ Press CTRL+C to quit
  * Debugger PIN: 124-614-488
 127.0.0.1 - - [03/Dec/2025 22:31:58] "GET / HTTP/1.1" 200 -
 127.0.0.1 - - [03/Dec/2025 22:31:59] "GET /static/style.css HTTP/1.1" 304 -
+127.0.0.1 - - [03/Dec/2025 22:32:18] "POST /api/chat HTTP/1.1" 200 -
