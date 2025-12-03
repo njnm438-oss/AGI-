@@ -12,37 +12,38 @@ def index():
 
 @app.route("/api/chat", methods=["POST"])
 def chat_api():
-    # Robust JSON parsing: accept either 'message' or 'question'
+    # Always ensure a JSON result is returned.
     try:
-        data = request.get_json(force=True, silent=True)
-        if not data:
-            return jsonify({"answer": "Invalid request format"}), 400
-        user_msg = ""
-        if "message" in data:
-            user_msg = data.get("message", "")
-        elif "question" in data:
-            user_msg = data.get("question", "")
-        user_msg = user_msg.strip() if isinstance(user_msg, str) else ""
-    except Exception as e:
-        return jsonify({"answer": f"Error reading request: {e}"}), 400
+        raw = request.get_data(as_text=True) or ""
+        if raw.strip() == "":
+            return jsonify({"answer": "Empty request body"}), 400
 
-    if not user_msg:
-        # Always return valid JSON
-        return jsonify({"answer": "⚠️ Message vide."}), 400
+        # try to parse JSON
+        try:
+            import json
+            data = json.loads(raw)
+        except Exception:
+            return jsonify({"answer": "Invalid JSON format"}), 400
 
-    # ---- CALL AGI SAFELY ----
-    try:
-        answer = agent.ask(user_msg)
-        if not isinstance(answer, str) or len(answer.strip()) == 0:
-            answer = "…"
-    except Exception as e:
-        answer = f"Internal error: {str(e)}"
+        # Extract question/message
+        msg = data.get("message") or data.get("question")
+        if not msg:
+            return jsonify({"answer": "Missing 'message' in request"}), 400
 
-    # ---- GUARANTEED SAFE JSON OUTPUT ----
-    try:
+        # Ask AGI safely
+        try:
+            answer = agent.ask(msg)
+            if not isinstance(answer, str) or answer.strip() == "":
+                answer = "…"
+        except Exception as e:
+            answer = f"Internal error: {e}"
+
+        # final return ALWAYS valid JSON
         return jsonify({"answer": answer})
+
     except Exception as e:
-        return jsonify({"answer": f"JSON serialization error: {e}"}), 500
+        # This ALWAYS returns JSON even on fatal error
+        return jsonify({"answer": f"Fatal server error: {e}"}), 500
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=True)

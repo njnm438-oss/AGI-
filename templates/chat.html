@@ -34,17 +34,24 @@
                     body: JSON.stringify({ message: msg })
                 });
 
-                let data;
-                try {
-                    data = await response.json();
-                } catch (e) {
-                    addMessage("AGI", "Erreur côté serveur (réponse invalide).");
-                    console.error("JSON parse error:", e);
+                // Read raw text first to avoid json parse exceptions
+                const raw = await response.text();
+                if (!raw || raw.trim() === "") {
+                    addMessage("agi", "Réponse vide du serveur.");
                     return;
                 }
 
-                // AI response
-                if (data.answer) {
+                let data;
+                try {
+                    data = JSON.parse(raw);
+                } catch (e) {
+                    addMessage("agi", "Réponse non-JSON du serveur.");
+                    console.error("Invalid JSON from server:", raw, e);
+                    return;
+                }
+
+                // AI response (guarded)
+                if (data && data.answer) {
                     addMessage("agi", data.answer);
                 } else {
                     addMessage("agi", "Pas de réponse reçue.");
