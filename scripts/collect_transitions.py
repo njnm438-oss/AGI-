@@ -26,7 +26,13 @@ if __name__ == '__main__':
         q = f'observation {i}'
         _ = agent.perceive_text(q)
         a = random_action_vec(agent.config.action_dim if hasattr(agent.config, 'action_dim') else 8)
-        next_state = state + 0.1 * a[:state.shape[0]] + 0.01 * np.random.randn(*state.shape)
+        # align action to state_dim (pad or truncate)
+        sd = state.shape[0]
+        if a.shape[0] < sd:
+            a_aligned = np.pad(a, (0, sd - a.shape[0]), mode='constant')
+        else:
+            a_aligned = a[:sd]
+        next_state = state + 0.1 * a_aligned + 0.01 * np.random.randn(*state.shape)
         r = 0.0
         done = False
         buffer.add((state, a, r, next_state, done))
