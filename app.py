@@ -12,26 +12,37 @@ def index():
 
 @app.route("/api/chat", methods=["POST"])
 def chat_api():
+    # Robust JSON parsing: accept either 'message' or 'question'
     try:
-        data = request.get_json()
-        user_msg = data.get("message", "").strip() if data else ""
-    except Exception:
-        return jsonify({"answer": "Invalid request format"}), 400
+        data = request.get_json(force=True, silent=True)
+        if not data:
+            return jsonify({"answer": "Invalid request format"}), 400
+        user_msg = ""
+        if "message" in data:
+            user_msg = data.get("message", "")
+        elif "question" in data:
+            user_msg = data.get("question", "")
+        user_msg = user_msg.strip() if isinstance(user_msg, str) else ""
+    except Exception as e:
+        return jsonify({"answer": f"Error reading request: {e}"}), 400
 
     if not user_msg:
+        # Always return valid JSON
         return jsonify({"answer": "⚠️ Message vide."}), 400
 
+    # ---- CALL AGI SAFELY ----
     try:
         answer = agent.ask(user_msg)
-        # Ensure answer is always a valid non-empty string
-        if not isinstance(answer, str):
-            answer = str(answer) if answer else "..."
-        if len(answer.strip()) == 0:
-            answer = "..."  # fallback safe value
+        if not isinstance(answer, str) or len(answer.strip()) == 0:
+            answer = "…"
     except Exception as e:
-        answer = f"Erreur interne: {str(e)[:100]}"
+        answer = f"Internal error: {str(e)}"
 
-    return jsonify({"answer": answer})
+    # ---- GUARANTEED SAFE JSON OUTPUT ----
+    try:
+        return jsonify({"answer": answer})
+    except Exception as e:
+        return jsonify({"answer": f"JSON serialization error: {e}"}), 500
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=True)
