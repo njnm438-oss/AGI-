@@ -49,15 +49,60 @@ class MCTSPlanner:
         best_action = max(root.children.items(), key=lambda item: item[1].visits)[0]
         return best_action
 
-    def rollout(self, state):
-        # simple heuristic: simulate random actions for rollout_depth and estimate value  (to be improved)
-        actions = [random.choice(self.action_space) for _ in range(self.rollout_depth)]
-        states = self.simulator.simulate(state, actions)
-        # value: placeholder 0.0
-        return 0.0
+    # agi/planner_mcts.py
+    import math, random
+    from collections import defaultdict
 
-    def backprop(self, node, value):
-        while node:
-            node.visits += 1
-            node.value += value
-            node = node.parent
+    class MCTSNode:
+        def __init__(self, state_repr, parent=None, prior=1.0):
+            self.state = state_repr
+            self.parent = parent
+            self.children = {}
+            self.visit_count = 0
+            self.value_sum = 0.0
+            self.prior = prior
+
+        def value(self):
+            return 0.0 if self.visit_count == 0 else (self.value_sum / self.visit_count)
+
+    class MCTSPlanner:
+        def __init__(self, simulator, action_space, n_sim=50, c_puct=1.0):
+            self.simulator = simulator
+            self.action_space = action_space  # list or array of discrete action vectors
+            self.n_sim = n_sim
+            self.c_puct = c_puct
+
+        def search(self, root_state, rollout_policy, value_fn):
+            root = MCTSNode(root_state)
+            for _ in range(self.n_sim):
+                node = root
+                path = [node]
+                # selection
+                while node.children:
+                    best = None; best_score = -1e9
+                    for a, child in node.children.items():
+                        u = self.c_puct * child.prior * math.sqrt(node.visit_count + 1) / (1 + child.visit_count)
+                        score = child.value() + u
+                        if score > best_score:
+                            best_score = score; best = (a, child)
+                    if best is None:
+                        break
+                    node = best[1]
+                    path.append(node)
+                # expand
+                actions, priors = rollout_policy(node.state)
+                for a, p in zip(actions, priors):
+                    if a not in node.children:
+                        node.children[a] = MCTSNode(state_repr=a, parent=node, prior=p)
+                # simulate/evaluate
+                v = value_fn(node.state)
+                # backprop
+                for n in reversed(path):
+                    n.visit_count += 1
+                    n.value_sum += v
+            # choose best action by visit count
+            best_act = None; best_visits = -1
+            for a,c in root.children.items():
+                if c.visit_count > best_visits:
+                    best_visits = c.visit_count; best_act = a
+            return best_act
