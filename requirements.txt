@@ -1,0 +1,9 @@
+numpy
+torch
+transformers
+sentence-transformers
+faiss-cpu
+pillow
+llama-cpp-python
+clip-anytorch
+pytest

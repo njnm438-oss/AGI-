@@ -1,0 +1,19 @@
+[project]
+name = "agi-laboratory-v4"
+version = "0.1.0"
+description = "Advanced AGI Laboratory v4 Framework"
+requires-python = ">=3.9"
+dependencies = [
+  "numpy",
+  "torch",
+  "sentence-transformers",
+  "faiss-cpu",
+  "transformers",
+  "pillow",
+  "clip-anytorch",
+  "llama-cpp-python"
+]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
