@@ -11,13 +11,27 @@ class LLMManager:
 
     def generate(self, prompt: str, max_tokens: int = 256, priority: tuple = None) -> str:
         order = list(priority or self.config.llm_backend_preference)
+        # If we have a 'heuristic' backend, prefer it before other fallbacks
+        if 'heuristic' in self.backends and 'heuristic' not in order:
+            order.insert(0, 'heuristic')
+
         for b in order:
             fn = self.backends.get(b)
             if not fn: continue
             try:
                 out = fn(prompt, max_tokens=max_tokens)
-                if out:
-                    return out
+                if not out:
+                    continue
+
+                # Post-process GPT-2 outputs: penalize wild personal/temporal claims
+                if b == 'gpt2':
+                    low = out.lower()
+                    bad_patterns = ['i was', 'when i was', 'my job', 'since 2013']
+                    if any(p in low for p in bad_patterns):
+                        logger.info('gpt2 output penalized for pattern match, skipping')
+                        continue
+
+                return out
             except Exception as e:
                 logger.warning('Backend %s failed: %s', b, e)
         return ''
