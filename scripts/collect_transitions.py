@@ -40,5 +40,5 @@ if __name__ == '__main__':
 
     # save small fixture
     arr = list(buffer.buf)
-    np.save(args.out, arr, allow_pickle=True)
+    np.save(args.out, np.array(arr, dtype=object), allow_pickle=True)
     print('Saved', len(arr), 'transitions to', args.out)
