@@ -84,8 +84,30 @@ class AGIAgent:
             pass
         return action
 
+    def _clean_output(self, txt: str) -> str:
+        """Remove self-reflections, repeated question blocks, internal traces."""
+        bad_patterns = [
+            "Question:", 
+            "Réponse:", 
+            "Q:", 
+            "Memories activated:", 
+            "Emotion snapshot:", 
+            "Keywords:",
+            "Objectif actif:",
+            "CoT:",
+            "Answer:"
+        ]
+        lines = txt.split("\n")
+        cleaned = []
+        for line in lines:
+            if not any(p in line for p in bad_patterns):
+                cleaned.append(line.strip())
+        out = " ".join([c for c in cleaned if c])
+        return out.strip() if out else txt.strip()
+
     def generate(self, prompt: str, max_tokens: int = 256):
-        return self.llm.generate(prompt, max_tokens=max_tokens)
+        raw = self.llm.generate(prompt, max_tokens=max_tokens)
+        return self._clean_output(raw)
 
     def introspect(self):
         vec = None
