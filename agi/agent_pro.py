@@ -216,7 +216,7 @@ class AGIAgentPro:
         # build context
         q = (question or "").strip()
         if q == "":
-            return "Je n'ai rien reçu comme question."
+            return "I did not receive any question."
 
         # thread-safe single call
         with self.lock:
@@ -249,7 +249,7 @@ class AGIAgentPro:
                         facts.append(c['text'][:200])
                     else:
                         facts.append(str(c)[:200])
-                mem_text = "En me basant sur mes souvenirs: " + " | ".join(facts)
+                mem_text = "Based on my memories: " + " | ".join(facts)
                 candidates.append((mem_text, {'source': 'memory'}))
 
             # 3) LLM candidate (controlled)
