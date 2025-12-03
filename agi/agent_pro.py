@@ -1,8 +1,8 @@
 """
-AGI Agent — Professional / Stable pipeline
-- Heuristic backend
+AGI Agent Pro — Professional / Stable pipeline (English mode)
+- Heuristic backend (template-based quick answers)
 - Combined scorer (memory, heuristic, LLM)
-- Controlled GPT-2 wrapper (short replies, French prompt, anti-hallucination)
+- Controlled GPT-2 wrapper (short replies, English prompt, anti-hallucination)
 Drop-in replacement for previous AGIAgent.ask() behavior.
 """
 
@@ -39,14 +39,14 @@ except Exception:
 def heuristic_response(question: str) -> str:
     q = question.strip().lower()
     # simple classifiers / templates
-    greetings = ["hello", "hi", "bonjour", "salut", "hey"]
+    greetings = ["hello", "hi", "hey", "greetings"]
     if any(g in q for g in greetings) and len(q.split()) <= 3:
-        return "Bonjour ! Comment puis-je vous aider ?"
-    if "qui es-tu" in q or "qui êtes-vous" in q or "présente-toi" in q:
-        return "Je suis un agent AGI prototype — un système de recherche expérimental."
+        return "Hello! How can I help you today?"
+    if "who are you" in q or "what are you" in q or "introduce yourself" in q:
+        return "I am an AGI prototype — an experimental research system."
     if q.endswith('?') and len(q.split()) <= 4:
         # short factual question -> heuristic safe reply
-        return "Bonne question — je peux chercher ça dans ma mémoire ou utiliser mon modèle de langage."
+        return "Good question — I can search my memory or use my language model to find an answer."
     # fallback: no heuristic
     return ""
 
