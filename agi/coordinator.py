@@ -15,8 +15,8 @@ class Coordinator:
     def decide_response(self, state: Dict):
         goal = self.agent.goal_manager.active()
         goal_desc = goal['desc'] if goal else None
-        # Use a concise instruction to encourage short, useful answers
-        prompt = f"Ceci est une courte réponse à la question suivante.\nQuestion: {state.get('question','')}\nRéponse courte et utile:"
+        # Use a concise instruction to encourage short, useful answers in English
+        prompt = f"Provide a brief, helpful answer to the following question.\nQuestion: {state.get('question','')}\nBrief answer:"
         resp = self.agent.generate(prompt, max_tokens=256)
         
         # Only store valid, clean responses (not internal traces)
@@ -28,6 +28,6 @@ class Coordinator:
                 pass
         
         if not resp:
-            return "Désolé, je n'ai pas de réponse complète pour le moment."
+            return "I apologize, I do not have a complete answer at this time."
         return resp
 
