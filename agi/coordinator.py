@@ -17,6 +17,16 @@ class Coordinator:
         goal_desc = goal['desc'] if goal else None
         prompt = f"Context: {', '.join([str(m.content)[:200] for m in state.get('attended',[])])}\nQuestion: {state.get('question','')}\nAnswer:"
         resp = self.agent.generate(prompt, max_tokens=256)
+        
+        # Only store valid, clean responses (not internal traces)
+        if resp and len(resp.strip()) > 10:
+            try:
+                self.agent.chat_history.append({'role': 'user', 'content': state.get('question', '')})
+                self.agent.chat_history.append({'role': 'assistant', 'content': resp})
+            except Exception:
+                pass
+        
         if not resp:
             return "Désolé, je n'ai pas de réponse complète pour le moment."
         return resp
+
