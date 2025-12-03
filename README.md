@@ -10,10 +10,9 @@ Modular AGI prototype (lab-oriented). Copy files in `agi/` and run `main.py`.
 5. Autonomous demo: `python main.py --mode autonomous`
 
 ## Notes
-- LLaMA requires `llama-cpp-python` + ggml model file.
-- CLIP optional: if not installed, image fallback used.
-- FAISS optional: if installed and path provided, episodic memory uses FAISS.
-- This repo is a research scaffold — tune components for your tasks.
 
 ## Roadmap
-- Trainable world model, MuZero-style planner, LLM backends local, perception upgrades, benchmarks.
+## World Model v6
+This feature adds a small learnable world model, simulator and MCTS planner.
+Use `scripts/collect_transitions.py` to generate small fixtures and `train_world_model.py` to train a smoke model.
+

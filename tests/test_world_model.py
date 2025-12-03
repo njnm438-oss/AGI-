@@ -1,22 +1,27 @@
+import numpy as np
 import torch
-from agi.world_model_nn import WorldModel
+from agi.world_model import WorldModel
 
-def test_world_model_shapes():
-    state_dim = 16
-    action_dim = 4
-    model = WorldModel(state_dim, action_dim, hidden=64)
-    s = torch.randn(2, state_dim)
-    a = torch.randn(2, action_dim)
-    out = model(s, a)
-    assert out.shape == s.shape
+def test_world_model_forward():
+    # small smoke test
+    s_dim = 16; a_dim = 8
+    model = WorldModel(state_dim=s_dim, action_dim=a_dim)
+    s = torch.randn(4, s_dim)
+    a = torch.randn(4, a_dim)
+    next_s = model(s,a)
+    assert next_s.shape == (4, s_dim)
 
-def test_world_model_train_step():
-    state_dim = 8
-    action_dim = 3
-    model = WorldModel(state_dim, action_dim, hidden=32)
-    s = torch.randn(10, state_dim)
-    a = torch.randn(10, action_dim)
-    s2 = torch.randn(10, state_dim)
-    pred = model(s, a)
-    loss = torch.nn.functional.mse_loss(pred, s2)
-    assert float(loss) >= 0.0
+def test_train_smoke():
+    # just check learner.step runs without crash on toy data
+    from agi.replay_buffer import ReplayBuffer
+    from agi.learner import Learner
+    buf = ReplayBuffer()
+    for i in range(64):
+        s = np.random.randn(16).astype('float32')
+        a = np.random.randn(8).astype('float32')
+        s2 = s + 0.1 * a[:16]
+        buf.add((s,a,0.0,s2,False))
+    model = WorldModel(16,8)
+    learner = Learner(model, buf)
+    loss = learner.step(batch_size=16)
+    assert isinstance(loss, float) or loss is None
