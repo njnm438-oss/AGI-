@@ -71,15 +71,15 @@ class ControlledLLM:
 
     def generate(self, question: str, context: str = "", max_new_tokens: int = 60) -> str:
         """
-        Generate a short, controlled answer in French. Prefer local model if present,
+        Generate a short, controlled answer in English. Prefer local model if present,
         otherwise use manager backends (which may be llama_cpp or gpt2).
         Postprocess: keep at most 2 sentences, filter autobiographic patterns.
         """
-        # build directive prompt in French to constrain generation
+        # build directive prompt in English to constrain generation
         prompt = (
-            "Réponse courte et professionnelle en français (1-2 phrases). "
-            "N'exprime pas d'autobiographie ni d'expériences personnelles inventées.\n"
-            f"Contexte: {context}\nQuestion: {question}\nRéponse:"
+            "Short, professional answer in English (1-2 sentences). "
+            "Do not make up autobiographical experiences or personal claims.\n"
+            f"Context: {context}\nQuestion: {question}\nAnswer:"
         )
 
         # Try local transformers for tighter control if available
@@ -119,11 +119,11 @@ class ControlledLLM:
         if len(sentences) > 2:
             gen_text = " ".join(sentences[:2]).strip()
         # safety filters — ban autobiographical telltales
-        BAN_PATTERNS = ["i was", "when i was", "my parents", "my job", "since 20", "i've been", "i am a", "je suis né", "quand j'étais"]
+        BAN_PATTERNS = ["i was", "when i was", "my parents", "my job", "since 20", "i've been", "i am a", "my childhood", "my experience"]
         low = gen_text.lower()
         if any(p in low for p in BAN_PATTERNS):
             # fallback safe answer
-            return "Je suis un agent IA. Comment puis-je vous aider ?"
+            return "I am an AI agent. How can I assist you?"
         # ensure short: if too long, truncate politely
         if len(gen_text.split()) > 60:
             gen_text = " ".join(gen_text.split()[:60]) + "..."
@@ -170,14 +170,14 @@ def score_candidate(text: str, question: str, q_emb: np.ndarray, emb_mod: Embedd
     s += 0.1 * float(getattr(emotion, 'curiosity', 0.0))
 
     # penalize autobiographic or hallucinatory markers
-    hallo_tokens = ["i was", "when i was", "my book", "my homework", "I've been", "je suis né", "ma famille"]
+    hallo_tokens = ["i was", "when i was", "my book", "my homework", "i've been", "my family", "my school"]
     low = text.lower()
     if any(h in low for h in hallo_tokens):
-        s -= 0.9  # heavy penalty
+        s -= 0.9  # heavy penalty for autobiographical content
 
     # penalize repetitions or question-like dumps
-    if text.count("Question:") > 0 or text.count("Réponse:") > 0:
-        s -= 1.0
+    if text.count("Question:") > 0 or text.count("Answer:") > 0 or text.count("Response:") > 0:
+        s -= 1.0  # avoid meta-question pollution
 
     # small random tie-breaker
     s += np.random.RandomState(int(hashlib.md5(text.encode()).hexdigest()[:8], 16) % 1000).randn() * 1e-4
