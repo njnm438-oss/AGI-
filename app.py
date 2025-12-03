@@ -12,17 +12,26 @@ def index():
 
 @app.route("/api/chat", methods=["POST"])
 def chat_api():
-    data = request.get_json()
-    user_msg = data.get("message", "").strip()
+    try:
+        data = request.get_json()
+        user_msg = data.get("message", "").strip() if data else ""
+    except Exception:
+        return jsonify({"answer": "Invalid request format"}), 400
 
     if not user_msg:
-        return jsonify({"answer": "⚠️ Message vide."})
+        return jsonify({"answer": "⚠️ Message vide."}), 400
 
-    # Generate answer
-    ai_answer = agent.ask(user_msg)
+    try:
+        answer = agent.ask(user_msg)
+        # Ensure answer is always a valid non-empty string
+        if not isinstance(answer, str):
+            answer = str(answer) if answer else "..."
+        if len(answer.strip()) == 0:
+            answer = "..."  # fallback safe value
+    except Exception as e:
+        answer = f"Erreur interne: {str(e)[:100]}"
 
-    # Return clean JSON response
-    return jsonify({"answer": ai_answer})
+    return jsonify({"answer": answer})
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=True)

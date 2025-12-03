@@ -27,16 +27,32 @@
             addMessage("user", msg);
             input.value = "";
 
-            const response = await fetch("/api/chat", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ message: msg })
-            });
+            try {
+                const response = await fetch("/api/chat", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message: msg })
+                });
 
-            const data = await response.json();
+                let data;
+                try {
+                    data = await response.json();
+                } catch (e) {
+                    addMessage("AGI", "Erreur côté serveur (réponse invalide).");
+                    console.error("JSON parse error:", e);
+                    return;
+                }
 
-            // AI response
-            addMessage("agi", data.answer);
+                // AI response
+                if (data.answer) {
+                    addMessage("agi", data.answer);
+                } else {
+                    addMessage("agi", "Pas de réponse reçue.");
+                }
+            } catch (e) {
+                addMessage("AGI", "Erreur réseau: " + e.message);
+                console.error("Fetch error:", e);
+            }
         }
 
         function addMessage(sender, text) {
