@@ -82,3 +82,5 @@ The attention mask is not set and cannot be inferred from input because pad toke
 127.0.0.1 - - [03/Dec/2025 23:23:44] "POST /api/chat HTTP/1.1" 200 -
  * Detected change in '/workspaces/AGI-/main.py', reloading
  * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 124-614-488
