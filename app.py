@@ -123,19 +123,19 @@ def api_chat():
         # final return ALWAYS valid JSON
         return jsonify({"answer": answer})
 
-
-    @app.route('/status')
-    def status():
-        return jsonify({
-            'replay_size': len(_replay),
-            'collector_count': _collector_count,
-            'last_loss': _last_loss,
-            'agent_running': getattr(agent, '_running', True)
-        })
-
     except Exception as e:
         # This ALWAYS returns JSON even on fatal error
         return jsonify({"answer": f"Fatal server error: {e}"}), 500
+
+
+@app.route('/status')
+def status():
+    return jsonify({
+        'replay_size': len(_replay),
+        'collector_count': _collector_count,
+        'last_loss': _last_loss,
+        'agent_running': getattr(agent, '_running', True)
+    })
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=True)
