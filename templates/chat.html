@@ -1,74 +1,52 @@
-<!doctype html>
-<html lang="fr">
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>AGI Web Chat App</title>
-  <link rel="stylesheet" href="/static/style.css">
+    <meta charset="UTF-8">
+    <title>AGI Chat</title>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  <div class="chat-app">
-    <header>
-      <h1>AGI Web Chat App</h1>
-      <div class="status" id="status">—</div>
-    </header>
+    <div class="chat-container">
+        <h2>AGI Chat</h2>
 
-    <div class="messages" id="messages"></div>
+        <div id="chat-box" class="chat-box"></div>
 
-    <form id="form" class="input-area">
-      <input id="input" placeholder="Posez une question..." autocomplete="off" />
-      <button id="send" type="button">Envoyer</button>
-    </form>
-  </div>
+        <div class="input-area">
+            <input id="user-input" type="text" placeholder="Écris ton message..." autocomplete="off">
+            <button onclick="sendMessage()">Envoyer</button>
+        </div>
+    </div>
 
-  <script>
-    const messages = document.getElementById('messages');
-    const status = document.getElementById('status');
-    const form = document.getElementById('form');
-    const input = document.getElementById('input');
+    <script>
+        async function sendMessage() {
+            const input = document.getElementById("user-input");
+            const msg = input.value.trim();
+            if (!msg) return;
 
-    function addMessage(who, html){
-      const el = document.createElement('div');
-      el.className = 'msg ' + who;
-      const whoEl = document.createElement('div'); whoEl.className = 'who'; whoEl.textContent = who === 'user' ? 'Vous' : 'AGI';
-      const text = document.createElement('div'); text.className = 'text'; text.innerHTML = html;
-      el.appendChild(whoEl); el.appendChild(text);
-      messages.appendChild(el);
-      messages.scrollTop = messages.scrollHeight;
-    }
+            // User message
+            addMessage("user", msg);
+            input.value = "";
 
-    async function send(e){
-      e && e.preventDefault();
-      const v = input.value.trim();
-      if(!v) return;
-      addMessage('user', v.replace(/</g,'&lt;'));
-      input.value = '';
-      status.textContent = 'Réflexion...';
-      try{
-        const res = await fetch('/api/chat', {
-          method: 'POST', headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({user: v})
-        });
-        const j = await res.json();
-        if(j.ok){
-          addMessage('agi', (j.response||'').replace(/\n/g, '<br>'));
-          status.textContent = 'État: ' + (j.status && j.status.emotion ? ('joy=' + (j.status.emotion[0]||0).toFixed(2)) : '—');
-        } else {
-          addMessage('agi', 'Erreur: ' + (j.error||'unknown'));
-          status.textContent = 'Erreur';
+            const response = await fetch("/api/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message: msg })
+            });
+
+            const data = await response.json();
+
+            // AI response
+            addMessage("agi", data.answer);
         }
-      }catch(e){
-        addMessage('agi', 'Erreur réseau: ' + e);
-        status.textContent = 'Erreur réseau';
-      }
-    }
 
-    form.addEventListener('submit', send);
-    document.getElementById('send').addEventListener('click', send);
-
-    // quick welcome
-    addMessage('agi', 'Bonjour — je suis ton AGI. Pose-moi une question.')
-    status.textContent = 'Prêt';
-  </script>
+        function addMessage(sender, text) {
+            const box = document.getElementById("chat-box");
+            const div = document.createElement("div");
+            div.className = `msg ${sender}`;
+            div.textContent = text;
+            box.appendChild(div);
+            box.scrollTop = box.scrollHeight;
+        }
+    </script>
 </body>
 </html>
