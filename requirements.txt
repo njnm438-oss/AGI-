@@ -6,4 +6,6 @@ faiss-cpu
 pillow
 llama-cpp-python
 clip-anytorch
+flask
 pytest
+

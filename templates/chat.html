@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AGI Web Chat App</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="chat-app">
+    <header>
+      <h1>AGI Web Chat App</h1>
+      <div class="status" id="status">—</div>
+    </header>
+
+    <div class="messages" id="messages"></div>
+
+    <form id="form" class="input-area">
+      <input id="input" placeholder="Posez une question..." autocomplete="off" />
+      <button id="send" type="button">Envoyer</button>
+    </form>
+  </div>
+
+  <script>
+    const messages = document.getElementById('messages');
+    const status = document.getElementById('status');
+    const form = document.getElementById('form');
+    const input = document.getElementById('input');
+
+    function addMessage(who, html){
+      const el = document.createElement('div');
+      el.className = 'msg ' + who;
+      const whoEl = document.createElement('div'); whoEl.className = 'who'; whoEl.textContent = who === 'user' ? 'Vous' : 'AGI';
+      const text = document.createElement('div'); text.className = 'text'; text.innerHTML = html;
+      el.appendChild(whoEl); el.appendChild(text);
+      messages.appendChild(el);
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+    async function send(e){
+      e && e.preventDefault();
+      const v = input.value.trim();
+      if(!v) return;
+      addMessage('user', v.replace(/</g,'&lt;'));
+      input.value = '';
+      status.textContent = 'Réflexion...';
+      try{
+        const res = await fetch('/api/chat', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({user: v})
+        });
+        const j = await res.json();
+        if(j.ok){
+          addMessage('agi', (j.response||'').replace(/\n/g, '<br>'));
+          status.textContent = 'État: ' + (j.status && j.status.emotion ? ('joy=' + (j.status.emotion[0]||0).toFixed(2)) : '—');
+        } else {
+          addMessage('agi', 'Erreur: ' + (j.error||'unknown'));
+          status.textContent = 'Erreur';
+        }
+      }catch(e){
+        addMessage('agi', 'Erreur réseau: ' + e);
+        status.textContent = 'Erreur réseau';
+      }
+    }
+
+    form.addEventListener('submit', send);
+    document.getElementById('send').addEventListener('click', send);
+
+    // quick welcome
+    addMessage('agi', 'Bonjour — je suis ton AGI. Pose-moi une question.')
+    status.textContent = 'Prêt';
+  </script>
+</body>
+</html>
