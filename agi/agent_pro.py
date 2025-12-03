@@ -230,7 +230,7 @@ class AGIAgentPro:
                 q_emb = None
 
             candidates: List[Tuple[str, dict]] = []
-            # Add heuristic candidate if present
+            # Add heuristic candidate if present (kept but deprioritized for open questions)
             if h_resp:
                 candidates.append((h_resp, {'source': 'heuristic'}))
 
@@ -240,6 +240,7 @@ class AGIAgentPro:
                 mem_items = self.memory.search(q_emb, k=6) if q_emb is not None else []
             except Exception:
                 mem_items = []
+            memory_summary = ""
             if mem_items:
                 # produce concise memory summary candidate
                 facts = []
@@ -249,22 +250,18 @@ class AGIAgentPro:
                         facts.append(c['text'][:200])
                     else:
                         facts.append(str(c)[:200])
-                mem_text = "Based on my memories: " + " | ".join(facts)
+                memory_summary = " | ".join(facts)
+                mem_text = "Based on my memories: " + memory_summary
                 candidates.append((mem_text, {'source': 'memory'}))
 
-            # 3) LLM candidate (controlled)
-            # Only call LLM if question is open-ended or no good heuristic/memory answer
-            call_llm = True
-            if h_resp and len(h_resp) < 80:
-                # heuristic answers short questions; avoid calling LLM unnecessarily
-                call_llm = False
-            if call_llm:
-                try:
-                    gen = self.llm.generate(question=q, context=(" | ".join([str(m.content) for m in mem_items[:3]])), max_new_tokens=80)
-                    if gen:
-                        candidates.append((gen, {'source': 'gpt2'}))
-                except Exception:
-                    pass
+            # 3) LLM candidate (controlled) - ENSURE LLM always present
+            try:
+                gen = self.llm.generate(question=q, context=(memory_summary if memory_summary else ""), max_new_tokens=120)
+                if gen:
+                    candidates.append((gen, {'source': 'gpt2'}))
+            except Exception:
+                # If LLM generation failed, still continue with other candidates
+                pass
 
             # If no candidates at all, default safe reply
             if not candidates:
@@ -277,11 +274,39 @@ class AGIAgentPro:
                     s = score_candidate(txt, q, q_emb, self.embedding, meta, self.emotion)
                 except Exception:
                     s = -9e9
+                # Ensure LLM candidate cannot be completely zeroed out
+                if meta.get('source') in ('gpt2', 'llm'):
+                    s = max(s, 1e-4)
                 scored.append((s, txt, meta))
             scored.sort(key=lambda x: x[0], reverse=True)
 
-            # Best candidate
+            # If question is clearly open (personal/identity/opinion), prefer LLM over pure memory
+            lowq = q.lower()
+            open_q = False
+            open_markers = ("who", "what", "how", "where", "when", "why", "do you", "your")
+            if lowq.split()[0] in open_markers or any(phr in lowq for phr in ["how do you feel", "who are you", "what do you think", "what is your name"]):
+                open_q = True
+
+            # If top candidate is memory but an LLM candidate exists and question is open, choose LLM
             best_score, best_text, best_meta = scored[0]
+            if open_q and best_meta.get('source') == 'memory':
+                # find best llm candidate
+                llm_candidates = [s for s in scored if s[2].get('source') in ('gpt2', 'llm')]
+                if llm_candidates:
+                    _, llm_text, llm_meta = llm_candidates[0]
+                    # merge: prefer LLM text, but append brief memory context if present
+                    if memory_summary:
+                        final = f"{llm_text.strip()}\n\n(Based on memory: {memory_summary})"
+                    else:
+                        final = llm_text.strip()
+                else:
+                    final = best_text.strip()
+            else:
+                # If LLM exists and memory also exists, blend them: prefer LLM as main answer
+                if best_meta.get('source') in ('gpt2', 'llm') and memory_summary:
+                    final = f"{best_text.strip()}\n\n(Based on memory: {memory_summary})"
+                else:
+                    final = best_text.strip()
 
             # Final cleaning: remove internal markers and ensure not empty
             def clean_output(txt: str) -> str:
@@ -300,19 +325,101 @@ class AGIAgentPro:
                     return "I apologize, I do not have a relevant answer."
                 return out
 
-            final = clean_output(best_text)
+            final = clean_output(final)
 
             # record dialogue safely (avoid storing raw LLM prompts/responses that contain "Question:" etc.)
             try:
                 safe_q = q if len(q) < 500 and "Question:" not in q else q[:200]
-                self.memory.add(MemoryItem(id=hashlib.md5(safe_q.encode()).hexdigest()[:16], content={'type':'dialogue','text': safe_q}, embedding=(q_emb if q_emb is not None else self.embedding.encode_text(safe_q)), ts=time.time(), importance=0.4))
+                emb_for_mem = q_emb if q_emb is not None else self.embedding.encode_text(safe_q)
+                self.memory.add(MemoryItem(id=hashlib.md5(safe_q.encode()).hexdigest()[:16], content={'type':'dialogue','text': safe_q}, embedding=emb_for_mem, ts=time.time(), importance=0.4))
             except Exception:
                 pass
 
-            # update emotion lightly
+            # update emotion lightly and modulate tone (small influence preserved)
             try:
-                self.emotion.update(reward=0.02, pred_error=0.0, success=True, novelty=0.01)
+                self.emotion.update(reward=0.03, pred_error=0.0, success=True, novelty=0.02)
             except Exception:
                 pass
 
             return final
+
+    def ask_chat(self, question: str, conversational: bool = True) -> str:
+        """ChatGPT-like conversational mode.
+        - Uses `chat_history` (short-term memory)
+        - Calls LLM primarily and appends a brief memory summary
+        - Updates emotion and chat history
+        Returns a plain text answer.
+        """
+        q = (question or "").strip()
+        if q == "":
+            return "I did not receive any question."
+
+        with self.lock:
+            # record user message in short-term chat history
+            try:
+                self.chat_history.append({'role': 'user', 'content': q})
+            except Exception:
+                pass
+
+            # prepare embedding and memory summary
+            q_emb = None
+            try:
+                q_emb = self.embedding.encode_text(q)
+            except Exception:
+                q_emb = None
+
+            mem_items = []
+            try:
+                mem_items = self.memory.search(q_emb, k=6) if q_emb is not None else []
+            except Exception:
+                mem_items = []
+
+            mem_summary = ""
+            if mem_items:
+                parts = []
+                for m in mem_items[:4]:
+                    c = m.content
+                    if isinstance(c, dict) and 'text' in c:
+                        parts.append(c['text'][:160])
+                    else:
+                        parts.append(str(c)[:160])
+                mem_summary = " | ".join(parts)
+
+            # build conversational prompt including recent chat history
+            recent = list(self.chat_history)[-10:]
+            history_text = "\n".join([f"{h['role']}: {h['content']}" for h in recent])
+            prompt = (
+                f"Conversation style answer in English. Keep it conversational and concise (1-3 sentences).\n"
+                f"Short memory: {mem_summary}\nConversation history:\n{history_text}\nUser: {q}\nAssistant:"
+            )
+
+            # Ask the LLM
+            try:
+                gen = self.llm.generate(question=q, context=prompt, max_new_tokens=160)
+            except Exception:
+                gen = ""
+
+            answer = gen.strip() if gen else "I apologize, I cannot answer that right now."
+
+            # append assistant reply to short-term history
+            try:
+                self.chat_history.append({'role': 'assistant', 'content': answer})
+            except Exception:
+                pass
+
+            # store a compact memory of the exchange
+            try:
+                summary_for_mem = (answer[:300] + ("..." if len(answer) > 300 else ""))
+                mid = hashlib.sha256((q + summary_for_mem).encode()).hexdigest()[:16]
+                emb = self.embedding.encode_text(summary_for_mem)
+                self.memory.add(MemoryItem(id=mid, content={'type': 'dialogue', 'text': summary_for_mem}, embedding=emb, ts=time.time(), importance=0.35))
+            except Exception:
+                pass
+
+            # small emotion update for conversational tone
+            try:
+                self.emotion.update(reward=0.05, pred_error=0.0, success=True, novelty=0.03)
+            except Exception:
+                pass
+
+            return answer

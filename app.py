@@ -32,9 +32,15 @@ def api_chat():
 
         # Ask AGI safely
         try:
-            answer = agent.ask(msg)
-            if not isinstance(answer, str) or answer.strip() == "":
-                answer = "…"
+            response = agent.ask(msg)
+            # If agent returns a dict/complex structure, extract the textual answer
+            if isinstance(response, dict):
+                final_text = response.get("answer") or response.get("text") or str(response)
+            else:
+                final_text = str(response)
+            if not final_text or final_text.strip() == "":
+                final_text = "…"
+            answer = final_text
         except Exception as e:
             answer = f"Internal error: {e}"
 
