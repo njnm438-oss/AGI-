@@ -268,7 +268,7 @@ class AGIAgentPro:
 
             # If no candidates at all, default safe reply
             if not candidates:
-                return "Désolé, je ne peux pas répondre pour l'instant."
+                return "I apologize, but I cannot provide an answer at this moment."
 
             # Score all candidates
             scored = []
@@ -287,17 +287,17 @@ class AGIAgentPro:
             def clean_output(txt: str) -> str:
                 if not isinstance(txt, str):
                     return str(txt)
-                # drop "Question:" / "Réponse:" blocks
+                # drop "Question:" / "Answer:" blocks and other metadata
                 lines = [L.strip() for L in txt.splitlines()]
                 keep = []
                 for L in lines:
-                    if any(p in L for p in ["Question:", "Réponse:", "Memories activated:", "Emotion snapshot:", "Keywords:"]):
+                    if any(p in L for p in ["Question:", "Answer:", "Response:", "Memories activated:", "Emotion snapshot:", "Keywords:"]):
                         continue
                     keep.append(L)
                 out = " ".join([k for k in keep if k])
                 out = out.strip()
                 if out == "":
-                    return "Désolé, je n'ai pas de réponse pertinente."
+                    return "I apologize, I do not have a relevant answer."
                 return out
 
             final = clean_output(best_text)
