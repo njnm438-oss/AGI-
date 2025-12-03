@@ -19,6 +19,11 @@ _collector_stop = threading.Event()
 _learner_stop = threading.Event()
 _collector_count = 0
 _last_loss = None
+_world_model = getattr(agent, 'world_model', None)
+if _world_model is None:
+    _learner = None
+else:
+    _learner = Learner(_world_model, _replay, device=getattr(agent.config, 'device', 'cpu'))
 
 def _collector_loop(interval=1.0):
     global _collector_count
