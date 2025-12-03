@@ -84,3 +84,9 @@ The attention mask is not set and cannot be inferred from input because pad toke
  * Restarting with stat
  * Debugger is active!
  * Debugger PIN: 124-614-488
+ * Detected change in '/workspaces/AGI-/app.py', reloading
+ * Restarting with stat
+  File "/workspaces/AGI-/app.py", line 127
+    @app.route('/status')
+    ^
+SyntaxError: expected 'except' or 'finally' block

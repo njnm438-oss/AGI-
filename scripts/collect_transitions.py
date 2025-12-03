@@ -3,7 +3,7 @@ Usage: python scripts/collect_transitions.py --out tests/fixtures/transitions_sm
 """
 import argparse, time, numpy as np
 from agi.replay_buffer import ReplayBuffer
-from agi.agent_pro_en import AGIAgentProEN
+from agi.agent_pro import AGIAgentPro
 
 # This script runs the agent in demo mode and collects simple synthetic transitions
 
@@ -16,7 +16,7 @@ if __name__ == '__main__':
     p.add_argument('--out', type=str, default='tests/fixtures/transitions_small.npy')
     args = p.parse_args()
 
-    agent = AGIAgentProEN()
+    agent = AGIAgentPro()
     buffer = ReplayBuffer(capacity=10000)
 
     # Synthetic loop: perceive text -> action vector -> next pseudo-state
