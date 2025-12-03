@@ -97,13 +97,17 @@ class AGIAgent:
             "CoT:",
             "Answer:"
         ]
+        # Filter out lines that contain bad patterns
         lines = txt.split("\n")
         cleaned = []
         for line in lines:
-            if not any(p in line for p in bad_patterns):
-                cleaned.append(line.strip())
-        out = " ".join([c for c in cleaned if c])
-        return out.strip() if out else txt.strip()
+            # Skip entire line if it contains any bad pattern
+            if any(p in line for p in bad_patterns):
+                continue
+            cleaned.append(line.strip())
+        # Join and deduplicate repeated lines
+        result = "\n".join([c for c in cleaned if c])
+        return result.strip() if result else "Je n'ai pas de réponse claire."
 
     def generate(self, prompt: str, max_tokens: int = 256):
         raw = self.llm.generate(prompt, max_tokens=max_tokens)
