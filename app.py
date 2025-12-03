@@ -1,17 +1,18 @@
 from flask import Flask, render_template, request, jsonify
-from agi.agent import AGIAgent
+import json
+from agi.agent_pro import AGIAgentPro
 
 app = Flask(__name__)
 
 # Create only ONE agent instance
-agent = AGIAgent()
+agent = AGIAgentPro()
 
 @app.route("/")
 def index():
     return render_template("chat.html")
 
 @app.route("/api/chat", methods=["POST"])
-def chat_api():
+def api_chat():
     # Always ensure a JSON result is returned.
     try:
         raw = request.get_data(as_text=True) or ""
@@ -20,7 +21,6 @@ def chat_api():
 
         # try to parse JSON
         try:
-            import json
             data = json.loads(raw)
         except Exception:
             return jsonify({"answer": "Invalid JSON format"}), 400
