@@ -37,7 +37,7 @@
                 // Read raw text first to avoid json parse exceptions
                 const raw = await response.text();
                 if (!raw || raw.trim() === "") {
-                    addMessage("agi", "Réponse vide du serveur.");
+                    addMessage("agi", "Empty server response.");
                     return;
                 }
 
@@ -45,7 +45,7 @@
                 try {
                     data = JSON.parse(raw);
                 } catch (e) {
-                    addMessage("agi", "Réponse non-JSON du serveur.");
+                    addMessage("agi", "Non-JSON response from server.");
                     console.error("Invalid JSON from server:", raw, e);
                     return;
                 }
