@@ -1,29 +1,24 @@
+# agi/simulator.py
 import torch
-from .world_model_nn import WorldModel
+from .world_model import WorldModel
 
 class Simulator:
-    def __init__(self, model: WorldModel, device='cpu'):
+    def __init__(self, model: WorldModel, device: str = 'cpu'):
         self.model = model.to(device)
         self.device = device
 
-    def simulate(self, state: torch.Tensor, action_seq):
+    def simulate(self, state: torch.Tensor, action_seq: torch.Tensor):
         """
-        state: torch.Tensor shape (batch, state_dim) or (state_dim,)
-        action_seq: iterable of action tensors (seq_len, action_dim) or list
-        returns: list of states (including initial)
+        Simulate a sequence of actions.
+        state: (state_dim,) or (1, state_dim)
+        action_seq: (T, action_dim) or (1, T, action_dim)
+        returns list of states (T+1 items)
         """
-        self.model.eval()
-        states = []
-        s = state.to(self.device)
-        states.append(s)
-        with torch.no_grad():
-            for a in action_seq:
-                a_t = a.to(self.device)
-                # ensure batch dims compatible
-                if a_t.dim() == 1:
-                    a_in = a_t.unsqueeze(0)
-                else:
-                    a_in = a_t
-                s = self.model(s, a_in)
-                states.append(s)
-        return states
+        s = state.to(self.device).unsqueeze(0) if state.dim() == 1 else state.to(self.device)
+        seq = action_seq.to(self.device)
+        out = [s.squeeze(0).cpu()]
+        for i in range(seq.shape[0]):
+            a = seq[i].unsqueeze(0)
+            s = self.model(s, a)
+            out.append(s.squeeze(0).cpu())
+        return out
