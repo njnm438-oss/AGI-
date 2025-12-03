@@ -16,3 +16,4 @@ The attention mask is not set and cannot be inferred from input because pad toke
 127.0.0.1 - - [03/Dec/2025 22:22:38] "POST /api/chat HTTP/1.1" 200 -
 127.0.0.1 - - [03/Dec/2025 22:23:00] "POST /api/chat HTTP/1.1" 200 -
 127.0.0.1 - - [03/Dec/2025 22:23:00] "POST /api/chat HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 22:23:41] "POST /api/chat HTTP/1.1" 200 -
