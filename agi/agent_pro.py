@@ -224,7 +224,7 @@ class AGIAgentPro:
         # Self-Modification Framework: safe module variant creation and testing
         self.self_modifier = SelfModificationFramework()
         # Continual Learner: importance-weighted consolidation + mixed replay
-        self.continual_learner = ContinualLearner(episodic_capacity=config.episodic_capacity)
+        self.continual_learner = ContinualLearner(buffer_capacity=1000, consolidation_interval=100)
         # LLM Adapter: dynamic LLM adaptation and fine-tuning
         self.llm_adapter = LLMAdapter()
         # Unified Memory: merge episodic + semantic + KG
