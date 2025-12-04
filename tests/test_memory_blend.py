@@ -14,4 +14,4 @@ def test_llm_blend_memory():
     resp = agent.ask(q)
     assert isinstance(resp, str)
     assert not resp.lower().startswith('based on my memories')
-*** End Patch
+ 
