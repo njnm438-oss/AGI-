@@ -391,5 +391,57 @@ def metrics():
         'memory_dominance_count': mem_dom
     })
 
+
+@app.route('/metrics_prom')
+def metrics_prom():
+    """Prometheus plaintext format metrics."""
+    mem_dom = 0
+    try:
+        if agent is not None:
+            mem_dom = int(getattr(agent, '_memory_dominance_count', 0))
+    except Exception:
+        mem_dom = 0
+    
+    lines = []
+    lines.append('# HELP agi_collector_count Total transitions collected')
+    lines.append('# TYPE agi_collector_count counter')
+    lines.append(f'agi_collector_count {_collector_count}')
+    lines.append('')
+    
+    lines.append('# HELP agi_buffer_size Current replay buffer size')
+    lines.append('# TYPE agi_buffer_size gauge')
+    lines.append(f'agi_buffer_size {len(_replay)}')
+    lines.append('')
+    
+    lines.append('# HELP agi_train_iterations Total training iterations')
+    lines.append('# TYPE agi_train_iterations counter')
+    lines.append(f'agi_train_iterations {_train_iterations}')
+    lines.append('')
+    
+    lines.append('# HELP agi_train_loss_avg Average training loss (exponential moving average)')
+    lines.append('# TYPE agi_train_loss_avg gauge')
+    loss_val = _train_loss_avg if _train_loss_avg is not None else 0.0
+    lines.append(f'agi_train_loss_avg {loss_val}')
+    lines.append('')
+    
+    lines.append('# HELP agi_last_loss Most recent training loss')
+    lines.append('# TYPE agi_last_loss gauge')
+    last_loss_val = _last_loss if _last_loss is not None else 0.0
+    lines.append(f'agi_last_loss {last_loss_val}')
+    lines.append('')
+    
+    lines.append('# HELP agi_world_model_loaded Whether world model is loaded (1=true, 0=false)')
+    lines.append('# TYPE agi_world_model_loaded gauge')
+    wm_loaded = 1 if (_world_model is not None and _world_model_loaded) else 0
+    lines.append(f'agi_world_model_loaded {wm_loaded}')
+    lines.append('')
+    
+    lines.append('# HELP agi_memory_dominance_count How often memory provided final answer')
+    lines.append('# TYPE agi_memory_dominance_count counter')
+    lines.append(f'agi_memory_dominance_count {mem_dom}')
+    lines.append('')
+    
+    return '\n'.join(lines), 200, {'Content-Type': 'text/plain; charset=utf-8'}
+
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=True)
