@@ -5,6 +5,8 @@ import atexit
 import time
 from agi.replay_buffer import ReplayBuffer
 from agi.learner import Learner
+import os
+import json as _json
 
 app = Flask(__name__)
 
@@ -12,11 +14,48 @@ app = Flask(__name__)
 agent = None
 _agent_ready = threading.Event()
 
+# Background learning/collection (lightweight, daemon)
+_replay = ReplayBuffer(capacity=50000)
+_collector_stop = threading.Event()
+_learner_stop = threading.Event()
+_collector_count = 0
+_last_loss = None
+_world_model = None
+_learner = None
+_train_iterations = 0
+_train_loss_avg = None
+_last_model_update = None
+_model_save_path = None
+_runs_base = 'runs'
+_current_run = None
+_best_loss = None
+_log_file = None
+_world_model_loaded = False
+
+# Event to nudge learner to wake up when buffer grows
+_learner_wakeup = threading.Event()
+
+def _init_learner():
+    """Initialize learner after agent is ready"""
+    global _world_model, _learner, _model_save_path, _runs_base
+    try:
+        if agent is not None:
+            _world_model = getattr(agent, 'world_model', None)
+            if _world_model is not None:
+                device = getattr(agent.config, 'device', 'cpu')
+                _learner = Learner(_world_model, _replay, device=device)
+            _model_save_path = getattr(agent.config, 'model_save_path', None)
+            _runs_base = getattr(agent.config, 'runs_dir', 'runs')
+    except Exception as e:
+        print(f"Failed to init learner: {e}")
+
 def _load_agent_background():
     global agent
     try:
         from agi.agent_pro import AGIAgentPro
         agent = AGIAgentPro()
+        # Initialize learner after agent is ready
+        _init_learner()
         _agent_ready.set()
     except Exception as e:
         print(f"Failed to load agent: {e}")
@@ -25,32 +64,6 @@ def _load_agent_background():
 # Start loading agent in background to unblock Flask startup
 _agent_load_thread = threading.Thread(target=_load_agent_background, daemon=True)
 _agent_load_thread.start()
-
-# Background learning/collection (lightweight, daemon)
-_replay = ReplayBuffer(capacity=50000)
-_collector_stop = threading.Event()
-_learner_stop = threading.Event()
-_collector_count = 0
-_last_loss = None
-_world_model = getattr(agent, 'world_model', None)
-if _world_model is None:
-    _learner = None
-else:
-    _learner = Learner(_world_model, _replay, device=getattr(agent.config, 'device', 'cpu'))
-_train_iterations = 0
-_train_loss_avg = None
-_last_model_update = None
-_model_save_path = getattr(agent.config, 'model_save_path', None)
-_runs_base = getattr(agent.config, 'runs_dir', 'runs')
-_current_run = None
-_best_loss = None
-_log_file = None
-_world_model_loaded = False
-import os
-import json as _json
-
-# Event to nudge learner to wake up when buffer grows
-_learner_wakeup = threading.Event()
 
 def _init_run_dir():
     global _current_run, _model_save_path, _log_file, _world_model_loaded
