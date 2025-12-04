@@ -53,19 +53,8 @@ class ControlledLLM:
         # if transformers locally available, we can use tokenizer/model directly for more control
         self.local_tok = None
         self.local_model = None
-        try:
-            from transformers import GPT2LMHeadModel, GPT2Tokenizer
-            import torch
-            try:
-                self.local_tok = GPT2Tokenizer.from_pretrained('distilgpt2')
-                self.local_model = GPT2LMHeadModel.from_pretrained('distilgpt2')
-                self.local_model.eval()
-            except Exception:
-                self.local_tok = None
-                self.local_model = None
-        except Exception:
-            self.local_tok = None
-            self.local_model = None
+        # lazy-load flag for local transformers model
+        self._tried_loading_local = False
 
     def generate(self, question: str, context: str = "", max_new_tokens: int = 60) -> str:
         """
@@ -82,6 +71,22 @@ class ControlledLLM:
 
         # Try local transformers for tighter control if available
         gen_text = ""
+        if not self._tried_loading_local:
+            self._tried_loading_local = True
+            try:
+                from transformers import GPT2LMHeadModel, GPT2Tokenizer
+                import torch
+                try:
+                    self.local_tok = GPT2Tokenizer.from_pretrained('distilgpt2')
+                    self.local_model = GPT2LMHeadModel.from_pretrained('distilgpt2')
+                    self.local_model.eval()
+                except Exception:
+                    self.local_tok = None
+                    self.local_model = None
+            except Exception:
+                self.local_tok = None
+                self.local_model = None
+
         if self.local_model is not None and self.local_tok is not None:
             try:
                 toks = self.local_tok.encode(prompt, return_tensors='pt')
