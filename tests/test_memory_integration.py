@@ -77,23 +77,24 @@ def test_memory_dominance_count_increments():
     original_gen = agent.llm.generate
     agent.llm.generate = lambda question, context="", max_new_tokens=60: ""
     
-    # Inject relevant memory
-    mem_text = "AGI is fascinating"
-    mem_emb = agent.embedding.encode_text(mem_text)
-    item = MemoryItem(
-        id="mem_1",
-        content={'type': 'text', 'text': mem_text},
-        embedding=mem_emb,
-        ts=1.0,
-        importance=0.8
-    )
-    agent.memory.add(item)
+    # Inject at least 2 relevant memory items (to meet min_items requirement)
+    mem_texts = ["AGI is fascinating", "AGI systems are interesting", "AGI research is important"]
+    for idx, mem_text in enumerate(mem_texts):
+        mem_emb = agent.embedding.encode_text(mem_text)
+        item = MemoryItem(
+            id=f"mem_{idx}",
+            content={'type': 'text', 'text': mem_text},
+            embedding=mem_emb,
+            ts=1.0,
+            importance=0.8
+        )
+        agent.memory.add(item)
     
     # Ask question that matches memory
     q = "what about AGI"
     resp = agent.ask(q)
     
-    # Counter should have incremented
+    # Counter should have incremented (memory dominated because LLM returned empty)
     new_count = getattr(agent, '_memory_dominance_count', 0)
     assert new_count > initial_count, f"Expected counter to increment from {initial_count} to > {initial_count}, got {new_count}"
     
