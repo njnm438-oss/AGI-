@@ -84,6 +84,9 @@ def _collector_loop(interval=1.0):
         state = None
     while not _collector_stop.is_set():
         try:
+            if agent is None:
+                _collector_stop.wait(interval)
+                continue
             obs = f"web tick {_collector_count}"
             emb = agent.perceive_text(obs)
             sd = getattr(agent.config, 'state_dim', 256)
@@ -244,6 +247,13 @@ def index():
 def api_chat():
     # Always ensure a JSON result is returned.
     try:
+        # Wait briefly for agent to be ready (up to 5 seconds)
+        if agent is None and not _agent_ready.is_set():
+            _agent_ready.wait(timeout=5.0)
+
+        if agent is None:
+            return jsonify({"answer": "Agent initialization in progress. Please retry."}), 503
+
         raw = request.get_data(as_text=True) or ""
         if raw.strip() == "":
             return jsonify({"answer": "Empty request body"}), 400
