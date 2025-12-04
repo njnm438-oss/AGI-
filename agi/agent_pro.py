@@ -288,6 +288,23 @@ class AGIAgentPro:
                 # If LLM generation failed, still continue with other candidates
                 llm_resp = None
 
+            # If LLM produced nothing but we have enough memory items, offer a memory candidate as a fallback
+            try:
+                min_items_req = getattr(self.config, 'memory_min_items', 2)
+                if (not llm_resp) and mem_items and len(mem_items) >= min_items_req and not any(m.get('source') == 'memory' for _, m in candidates):
+                    facts = []
+                    for m in mem_items[:4]:
+                        c = m.content
+                        if isinstance(c, dict) and 'text' in c:
+                            facts.append(c['text'][:200])
+                        else:
+                            facts.append(str(c)[:200])
+                    memory_summary_fallback = " | ".join(facts)
+                    mem_text = "Based on my memories: " + memory_summary_fallback
+                    candidates.append((mem_text, {'source': 'memory'}))
+            except Exception:
+                pass
+
             # Decision: Priority LLM > heuristic > memory (with blending)
             # evaluate memory relevance
             best_mem_sim = 0.0
