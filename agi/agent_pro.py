@@ -25,6 +25,12 @@ from .planner import Planner
 from .emotion import EmotionalState
 from .goal_manager import GoalManager
 from .coordinator import Coordinator
+# v10 proto-AGI modules
+from .meta_reasoning_engine import MetaReasoningEngine
+from .self_modification import SelfModificationFramework
+from .continual_learner import ContinualLearner
+from .llm_adapter import LLMAdapter
+from .unified_memory import UnifiedMemory
 
 # module logger
 logger = logging.getLogger(__name__)
@@ -211,6 +217,22 @@ class AGIAgentPro:
         self._running = True
         # metric: how often memory dominated the final reply
         self._memory_dominance_count = 0
+        
+        # ===== V10 Proto-AGI Modules =====
+        # Meta-Reasoning Engine: introspection on reasoning quality
+        self.meta_reasoning = MetaReasoningEngine()
+        # Self-Modification Framework: safe module variant creation and testing
+        self.self_modifier = SelfModificationFramework()
+        # Continual Learner: importance-weighted consolidation + mixed replay
+        self.continual_learner = ContinualLearner(episodic_capacity=config.episodic_capacity)
+        # LLM Adapter: dynamic LLM adaptation and fine-tuning
+        self.llm_adapter = LLMAdapter()
+        # Unified Memory: merge episodic + semantic + KG
+        try:
+            self.unified_memory = UnifiedMemory(self.embedding)
+        except Exception as e:
+            logger.warning("Failed to initialize UnifiedMemory: %s", e)
+            self.unified_memory = None
 
     # perception convenience
     def perceive_text(self, text: str, importance: float = 0.5):
