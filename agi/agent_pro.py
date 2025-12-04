@@ -25,13 +25,7 @@ from .emotion import EmotionalState
 from .goal_manager import GoalManager
 from .coordinator import Coordinator
 
-# Optional imports for safety
-try:
-    from transformers import GPT2LMHeadModel, GPT2Tokenizer
-    import torch
-    TRANSFORMERS_AVAILABLE = True
-except Exception:
-    TRANSFORMERS_AVAILABLE = False
+# Note: heavy libraries (transformers/torch) are imported lazily inside ControlledLLM
 
 # ---------------------------
 # Heuristic backend (fast)
@@ -59,15 +53,19 @@ class ControlledLLM:
         # if transformers locally available, we can use tokenizer/model directly for more control
         self.local_tok = None
         self.local_model = None
-        if TRANSFORMERS_AVAILABLE:
+        try:
+            from transformers import GPT2LMHeadModel, GPT2Tokenizer
+            import torch
             try:
                 self.local_tok = GPT2Tokenizer.from_pretrained('distilgpt2')
                 self.local_model = GPT2LMHeadModel.from_pretrained('distilgpt2')
                 self.local_model.eval()
-                # if GPU available, this could be moved to device
             except Exception:
                 self.local_tok = None
                 self.local_model = None
+        except Exception:
+            self.local_tok = None
+            self.local_model = None
 
     def generate(self, question: str, context: str = "", max_new_tokens: int = 60) -> str:
         """
