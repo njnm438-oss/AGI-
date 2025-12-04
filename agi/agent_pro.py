@@ -314,6 +314,28 @@ class AGIAgentPro:
                 # If LLM generation failed, still continue with other candidates
                 llm_resp = None
 
+            # V10: Meta-Reasoning verification on LLM response
+            llm_quality_score = 1.0  # default: trust LLM
+            try:
+                if llm_resp and self.meta_reasoning:
+                    # Trace the reasoning chain: Question -> Context -> Answer
+                    reasoning_steps = [
+                        f"Question: {q[:100]}",
+                        f"Context: {(memory_summary if memory_summary else 'N/A')[:100]}",
+                        f"Answer: {llm_resp[:100]}"
+                    ]
+                    # Record reasoning trace
+                    trace = self.meta_reasoning.trace_reasoning(reasoning_steps, conclusion=llm_resp, confidence=0.85)
+                    # Verify conclusion vs premises
+                    quality = self.meta_reasoning.verify_conclusion(trace)
+                    llm_quality_score = quality.get('quality_score', 1.0)
+                    # If quality is low, flag for later adjustment
+                    if llm_quality_score < 0.5:
+                        logger.debug("V10: LLM response quality low (%.2f), may use memory instead", llm_quality_score)
+            except Exception as e:
+                logger.debug("V10: Meta-reasoning verification failed: %s", e)
+                llm_quality_score = 1.0  # fallback to trusting LLM
+
             # If LLM produced nothing but we have enough memory items, offer a memory candidate as a fallback
             try:
                 min_items_req = getattr(self.config, 'memory_min_items', 2)
