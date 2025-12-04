@@ -490,10 +490,11 @@ class AGIAgentPro:
                     }
                     # Importance = combination of quality + novelty
                     importance = min(1.0, max(0.3, llm_quality_score * 0.7 + np.random.rand() * 0.3))
-                    self.continual_learner.add_experience(experience, importance=importance)
+                    # Use default task_id 'general'
+                    self.continual_learner.add_experience('general', experience, importance=importance)
                     
                     # Periodically consolidate (every 50 experiences)
-                    if self.continual_learner.buffer_size % 50 == 0:
+                    if self.continual_learner.samples_seen % 50 == 0:
                         self.continual_learner.consolidate()
                         logger.debug("V10: Continual learning consolidation triggered")
             except Exception as e:
@@ -619,9 +620,9 @@ class AGIAgentPro:
     def get_v10_metrics(self) -> Dict[str, Any]:
         """Collect v10 proto-AGI metrics for monitoring."""
         metrics = {
-            'meta_reasoning_traces': len(self.meta_reasoning.traces) if self.meta_reasoning else 0,
-            'self_modification_variants': len(self.self_modifier.history) if self.self_modifier else 0,
-            'continual_learner_buffer_size': self.continual_learner.buffer_size if self.continual_learner else 0,
+            'meta_reasoning_traces': len(self.meta_reasoning.reasoning_traces) if self.meta_reasoning else 0,
+            'self_modification_variants': len(self.self_modifier.modification_history) if self.self_modifier else 0,
+            'continual_learner_buffer_size': len(self.continual_learner.replay_buffer) if self.continual_learner else 0,
             'unified_memory_size': len(self.unified_memory.episodic.items) if self.unified_memory else 0,
         }
         return metrics
