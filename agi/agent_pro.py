@@ -10,6 +10,7 @@ import time
 import threading
 import hashlib
 import numpy as np
+import logging
 from collections import deque
 from typing import List, Tuple, Dict, Any
 
@@ -24,6 +25,9 @@ from .planner import Planner
 from .emotion import EmotionalState
 from .goal_manager import GoalManager
 from .coordinator import Coordinator
+
+# module logger
+logger = logging.getLogger(__name__)
 
 # Note: heavy libraries (transformers/torch) are imported lazily inside ControlledLLM
 
