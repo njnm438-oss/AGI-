@@ -391,43 +391,5 @@ def metrics():
         'memory_dominance_count': mem_dom
     })
 
-
-@app.route('/metrics_prom')
-def metrics_prom():
-    """Prometheus-style plaintext metrics endpoint"""
-    mem_dom = 0
-    try:
-        if agent is not None:
-            mem_dom = int(getattr(agent, '_memory_dominance_count', 0))
-    except Exception:
-        mem_dom = 0
-
-    lines = [
-        '# HELP agi_collector_count Total number of transitions collected',
-        '# TYPE agi_collector_count counter',
-        f'agi_collector_count {_collector_count}',
-        '',
-        '# HELP agi_buffer_size Current replay buffer size',
-        '# TYPE agi_buffer_size gauge',
-        f'agi_buffer_size {len(_replay)}',
-        '',
-        '# HELP agi_train_iterations Total training iterations',
-        '# TYPE agi_train_iterations counter',
-        f'agi_train_iterations {_train_iterations}',
-        '',
-        '# HELP agi_train_loss_avg Average training loss (exponential moving average)',
-        '# TYPE agi_train_loss_avg gauge',
-        f'agi_train_loss_avg {_train_loss_avg if _train_loss_avg is not None else 0.0}',
-        '',
-        '# HELP agi_last_loss Last training loss value',
-        '# TYPE agi_last_loss gauge',
-        f'agi_last_loss {_last_loss if _last_loss is not None else 0.0}',
-        '',
-        '# HELP agi_memory_dominance_count Total responses where memory was the primary source',
-        '# TYPE agi_memory_dominance_count counter',
-        f'agi_memory_dominance_count {mem_dom}',
-    ]
-    return '\n'.join(lines), 200, {'Content-Type': 'text/plain; charset=utf-8'}
-
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=True)
