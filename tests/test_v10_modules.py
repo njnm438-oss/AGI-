@@ -167,8 +167,8 @@ class TestUnifiedMemory:
         emb = EmbeddingModule(dim=128)
         um = UnifiedMemory(emb)
         um.add_event("Test event", importance=0.5)
-        # Check that memory was added
-        assert len(um.episodic.memory) > 0 or len(um.kg.concepts) > 0
+        # Check that memory was added (access items list)
+        assert len(um.episodic.items) > 0 or len(um.kg.concepts) > 0
 
     def test_query(self):
         emb = EmbeddingModule(dim=128)
