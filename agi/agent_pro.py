@@ -165,7 +165,7 @@ def score_candidate(text: str, question: str, q_emb: np.ndarray, emb_mod: Embedd
     if source == 'heuristic':
         s += 0.45   # strong boost
     elif source == 'memory':
-        s += 0.25
+        s += 0.20
     elif source == 'gpt2' or source == 'llm':
         s += 0.15
 
