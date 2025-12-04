@@ -65,8 +65,16 @@ class WorldModelV2:
 
         # update latent
         # GRU-like update (very simplified)
-        z = 1 / (1 + np.exp(- (latent @ self.W_latent.diagonal())))  # pretend gate
-        new_latent = np.tanh((latent * z) @ self.W_latent + (action_embedding[: self.latent_dim] @ np.eye(self.latent_dim)) + self.b)
+        z = 1 / (1 + np.exp(- (latent @ np.diag(self.W_latent))))  # pretend gate using diagonal
+        # project action embedding into latent space
+        try:
+            action_proj = self.W_action @ action_embedding
+        except Exception:
+            # fallback: pad/truncate action embedding
+            ae = np.zeros(self.W_action.shape[1])
+            ae[: min(len(action_embedding), ae.shape[0])] = action_embedding[: ae.shape[0]]
+            action_proj = self.W_action @ ae
+        new_latent = np.tanh((latent * z) @ self.W_latent + action_proj + self.b)
         # next state
         next_state = np.tanh(new_latent[: self.state_dim] @ self.W_out)
         # reward: small scalar from dot product
