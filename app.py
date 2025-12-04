@@ -1,6 +1,5 @@
 from flask import Flask, render_template, request, jsonify
 import json
-from agi.agent_pro import AGIAgentPro
 import threading
 import atexit
 import time
@@ -9,8 +8,23 @@ from agi.learner import Learner
 
 app = Flask(__name__)
 
-# Create only ONE agent instance
-agent = AGIAgentPro()
+# Create only ONE agent instance (loaded lazily in background thread)
+agent = None
+_agent_ready = threading.Event()
+
+def _load_agent_background():
+    global agent
+    try:
+        from agi.agent_pro import AGIAgentPro
+        agent = AGIAgentPro()
+        _agent_ready.set()
+    except Exception as e:
+        print(f"Failed to load agent: {e}")
+        agent = None
+
+# Start loading agent in background to unblock Flask startup
+_agent_load_thread = threading.Thread(target=_load_agent_background, daemon=True)
+_agent_load_thread.start()
 
 # Background learning/collection (lightweight, daemon)
 _replay = ReplayBuffer(capacity=50000)
@@ -51,7 +65,7 @@ def _init_run_dir():
         _log_file = os.path.join(run_dir, 'train_log.jsonl')
         try:
             import torch as _torch
-            wm = getattr(agent, 'world_model', None)
+            wm = getattr(agent, 'world_model', None) if agent else None
             if wm is not None:
                 _torch.save(wm.state_dict(), os.path.join(run_dir, 'world_model_init.pt'))
                 _world_model_loaded = True
