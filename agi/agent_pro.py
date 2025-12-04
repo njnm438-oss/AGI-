@@ -205,6 +205,8 @@ class AGIAgentPro:
         self.lock = threading.Lock()
         # start minimal background tasks if needed
         self._running = True
+        # metric: how often memory dominated the final reply
+        self._memory_dominance_count = 0
 
     # perception convenience
     def perceive_text(self, text: str, importance: float = 0.5):
@@ -276,17 +278,54 @@ class AGIAgentPro:
                     memory_summary = ""
 
             # 3) LLM candidate (controlled) - ENSURE LLM always present
+            llm_resp = None
             try:
                 gen = self.llm.generate(question=q, context=(memory_summary if memory_summary else ""), max_new_tokens=120)
                 if gen and len(gen.strip()) > 0:
-                    # Priority: if LLM returns a reasonable answer, prefer it immediately
-                    return gen.strip()
+                    llm_resp = gen.strip()
                 # else fallthrough
             except Exception:
                 # If LLM generation failed, still continue with other candidates
-                pass
+                llm_resp = None
 
-            # If no candidates at all, default safe reply
+            # Decision: Priority LLM > heuristic > memory (with blending)
+            # evaluate memory relevance
+            best_mem_sim = 0.0
+            try:
+                if mem_items and q_emb is not None:
+                    best_mem_sim = max((float(cosine(getattr(m, 'embedding', None), q_emb)) for m in mem_items if getattr(m, 'embedding', None) is not None), default=0.0)
+            except Exception:
+                best_mem_sim = 0.0
+
+            mem_relevant = (len(mem_items) >= getattr(self.config, 'memory_min_items', 2)) and (best_mem_sim >= getattr(self.config, 'memory_similarity_threshold', 0.4))
+
+            # If LLM produced a usable response, prefer it, optionally attach memory summary
+            if llm_resp:
+                final = llm_resp
+                if getattr(self.config, 'attach_memory_to_llm', True) and mem_relevant and memory_summary:
+                    # build short memory note
+                    facts = []
+                    for m in mem_items[:4]:
+                        txt = m.content['text'] if isinstance(m.content, dict) and 'text' in m.content else str(m.content)
+                        facts.append(txt[:getattr(self.config, 'memory_attach_max_chars', 160)])
+                    mem_summary_short = " | ".join(facts[:3])
+                    final = f"{final}  (Based on memory: {mem_summary_short})"
+                # record dialogue and return
+                final = final.strip()
+                # record dialogue safely (avoid storing raw LLM prompts/responses that contain "Question:" etc.)
+                try:
+                    safe_q = q if len(q) < 500 and "Question:" not in q else q[:200]
+                    emb_for_mem = q_emb if q_emb is not None else self.embedding.encode_text(safe_q)
+                    self.memory.add(MemoryItem(id=hashlib.md5(safe_q.encode()).hexdigest()[:16], content={'type':'dialogue','text': safe_q}, embedding=emb_for_mem, ts=time.time(), importance=0.4))
+                except Exception:
+                    pass
+                try:
+                    self.emotion.update(reward=0.03, pred_error=0.0, success=True, novelty=0.02)
+                except Exception:
+                    pass
+                return final
+
+            # no LLM answer: fall back to candidates (heuristic or memory)
             if not candidates:
                 return "I apologize, but I cannot provide an answer at this moment."
 

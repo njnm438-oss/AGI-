@@ -356,16 +356,30 @@ def api_chat():
 
 @app.route('/status')
 def status():
+    mem_dom = 0
+    try:
+        if agent is not None:
+            mem_dom = int(getattr(agent, '_memory_dominance_count', 0))
+    except Exception:
+        mem_dom = 0
     return jsonify({
         'replay_size': len(_replay),
         'collector_count': _collector_count,
         'last_loss': _last_loss,
-        'agent_running': getattr(agent, '_running', True)
+        'agent_running': getattr(agent, '_running', True),
+        'memory_dominance_count': mem_dom
     })
 
 
 @app.route('/metrics')
 def metrics():
+    mem_dom = 0
+    try:
+        if agent is not None:
+            mem_dom = int(getattr(agent, '_memory_dominance_count', 0))
+    except Exception:
+        mem_dom = 0
+    # return JSON for convenience
     return jsonify({
         'collector_count': _collector_count,
         'buffer_size': len(_replay),
@@ -373,7 +387,8 @@ def metrics():
         'train_loss_avg': _train_loss_avg,
         'last_loss': _last_loss,
         'last_model_update': _last_model_update,
-        'world_model_loaded': bool(_world_model is not None and _world_model_loaded)
+        'world_model_loaded': bool(_world_model is not None and _world_model_loaded),
+        'memory_dominance_count': mem_dom
     })
 
 if __name__ == "__main__":
