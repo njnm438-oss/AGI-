@@ -61,10 +61,12 @@ def _register_gpt2_if_available(mgr):
                 tok = GPT2Tokenizer.from_pretrained('distilgpt2')
                 model = GPT2LMHeadModel.from_pretrained('distilgpt2')
                 model.eval()
-                toks = tok.encode(prompt, return_tensors='pt')
+                # use a dialogue-style prompt so GPT-2 better understands turn-taking
+                dprompt = f"User: {prompt}\nAI:"
+                toks = tok.encode(dprompt, return_tensors='pt')
                 out = model.generate(toks, max_length=min(toks.shape[1]+max_tokens, 512), do_sample=True, top_k=40, top_p=0.92)
                 s = tok.decode(out[0], skip_special_tokens=True)
-                gen = s[len(prompt):].strip()
+                gen = s[len(dprompt):].strip()
                 # keep only 1-2 sentences to avoid long, off-topic generations
                 try:
                     import re
