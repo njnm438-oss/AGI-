@@ -441,6 +441,33 @@ def metrics_prom():
     lines.append(f'agi_memory_dominance_count {mem_dom}')
     lines.append('')
     
+    # V10 Proto-AGI Metrics
+    try:
+        if agent is not None:
+            v10_metrics = agent.get_v10_metrics()
+            
+            lines.append('# HELP agi_v10_meta_reasoning_traces Number of reasoning traces recorded by meta-reasoning engine')
+            lines.append('# TYPE agi_v10_meta_reasoning_traces counter')
+            lines.append(f'agi_v10_meta_reasoning_traces {v10_metrics.get("meta_reasoning_traces", 0)}')
+            lines.append('')
+            
+            lines.append('# HELP agi_v10_self_modification_variants Number of module variants created by self-modification framework')
+            lines.append('# TYPE agi_v10_self_modification_variants counter')
+            lines.append(f'agi_v10_self_modification_variants {v10_metrics.get("self_modification_variants", 0)}')
+            lines.append('')
+            
+            lines.append('# HELP agi_v10_continual_learner_buffer_size Size of continual learner experience buffer')
+            lines.append('# TYPE agi_v10_continual_learner_buffer_size gauge')
+            lines.append(f'agi_v10_continual_learner_buffer_size {v10_metrics.get("continual_learner_buffer_size", 0)}')
+            lines.append('')
+            
+            lines.append('# HELP agi_v10_unified_memory_size Number of items in unified memory')
+            lines.append('# TYPE agi_v10_unified_memory_size gauge')
+            lines.append(f'agi_v10_unified_memory_size {v10_metrics.get("unified_memory_size", 0)}')
+            lines.append('')
+    except Exception as e:
+        logger.warning("Failed to collect v10 metrics: %s", e)
+    
     return '\n'.join(lines), 200, {'Content-Type': 'text/plain; charset=utf-8'}
 
 if __name__ == "__main__":
