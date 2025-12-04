@@ -46,9 +46,10 @@ class DeductionModule:
     def __init__(self):
         self.rules: List[Tuple[List[str], str]] = [
             # Classic rules
-            (["X is mortal", "X is human"], "X is mortal"),
-            (["X causes Y", "Y causes Z"], "X causes Z"),
-            (["X is instance of Y", "Y has property P"], "X has property P"),
+            (["is human", "are mortal"], "is mortal"),
+            (["causes", "causes"], "causes"),
+            (["instance", "has property"], "has property"),
+            (["is", "is"], "is"),  # Simple reflexivity
         ]
     
     def deduce(self, premises: List[Premise]) -> List[Conclusion]:
