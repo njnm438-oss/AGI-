@@ -49,41 +49,45 @@ try:
 except Exception:
     LLAMA_CPP_AVAILABLE = False
 
-# GPT-2 fallback via transformers
-try:
-    from transformers import GPT2LMHeadModel, GPT2Tokenizer
-    import torch
-    def gpt2_gen(prompt, max_tokens=128):
-        try:
-            tok = GPT2Tokenizer.from_pretrained('distilgpt2')
-            model = GPT2LMHeadModel.from_pretrained('distilgpt2')
-            model.eval()
-            toks = tok.encode(prompt, return_tensors='pt')
-            out = model.generate(toks, max_length=min(toks.shape[1]+max_tokens, 512), do_sample=True, top_k=40, top_p=0.92)
-            s = tok.decode(out[0], skip_special_tokens=True)
-            gen = s[len(prompt):].strip()
-            # keep only 1-2 sentences to avoid long, off-topic generations
+# GPT-2 fallback via transformers (lazy-imported inside factory)
+GPT2_AVAILABLE = False
+def _register_gpt2_if_available(mgr):
+    try:
+        from transformers import GPT2LMHeadModel, GPT2Tokenizer
+        import torch
+
+        def gpt2_gen(prompt, max_tokens=128):
             try:
-                import re
-                parts = re.split(r'(?<=[.!?])\s+', gen)
-                if len(parts) > 2:
-                    gen = ' '.join(parts[:2]).strip()
-            except Exception:
-                # fallback: simple dot-split
-                parts = gen.split('.')
-                gen = ('.'.join(parts[:2])).strip()
-            return gen
-        except Exception as e:
-            logger.warning('gpt2_gen failed: %s', e)
-            return ''
-    GPT2_AVAILABLE = True
-except Exception:
-    GPT2_AVAILABLE = False
+                tok = GPT2Tokenizer.from_pretrained('distilgpt2')
+                model = GPT2LMHeadModel.from_pretrained('distilgpt2')
+                model.eval()
+                toks = tok.encode(prompt, return_tensors='pt')
+                out = model.generate(toks, max_length=min(toks.shape[1]+max_tokens, 512), do_sample=True, top_k=40, top_p=0.92)
+                s = tok.decode(out[0], skip_special_tokens=True)
+                gen = s[len(prompt):].strip()
+                # keep only 1-2 sentences to avoid long, off-topic generations
+                try:
+                    import re
+                    parts = re.split(r'(?<=[.!?])\s+', gen)
+                    if len(parts) > 2:
+                        gen = ' '.join(parts[:2]).strip()
+                except Exception:
+                    parts = gen.split('.')
+                    gen = ('.'.join(parts[:2])).strip()
+                return gen
+            except Exception as e:
+                logger.warning('gpt2_gen failed: %s', e)
+                return ''
+
+        mgr.register('gpt2', gpt2_gen)
+        return True
+    except Exception:
+        return False
 
 def make_default_llm_manager(config, llama_model_path: str = None):
     m = LLMManager(config)
     if LLAMA_CPP_AVAILABLE and llama_model_path:
         m.register('llama_cpp', lambda p, max_tokens=256: llama_cpp_gen(p, max_tokens=max_tokens, model_path=llama_model_path))
-    if GPT2_AVAILABLE:
-        m.register('gpt2', gpt2_gen)
+    # attempt to register GPT-2 lazily (may fail if transformers/torch not available)
+    _register_gpt2_if_available(m)
     return m
