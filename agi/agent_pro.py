@@ -477,6 +477,36 @@ class AGIAgentPro:
             except Exception:
                 pass
 
+            # V10: Continual Learning & Unified Memory integration
+            try:
+                if self.continual_learner:
+                    # Record this QA pair as an experience with importance based on meta-reasoning quality
+                    experience = {
+                        'question': q[:300],
+                        'answer': final[:300],
+                        'quality_score': llm_quality_score,
+                        'memory_relevant': len(mem_items) >= 2,
+                        'timestamp': time.time()
+                    }
+                    # Importance = combination of quality + novelty
+                    importance = min(1.0, max(0.3, llm_quality_score * 0.7 + np.random.rand() * 0.3))
+                    self.continual_learner.add_experience(experience, importance=importance)
+                    
+                    # Periodically consolidate (every 50 experiences)
+                    if self.continual_learner.buffer_size % 50 == 0:
+                        self.continual_learner.consolidate()
+                        logger.debug("V10: Continual learning consolidation triggered")
+            except Exception as e:
+                logger.debug("V10: Continual learning failed: %s", e)
+
+            # V10: Unified Memory update
+            try:
+                if self.unified_memory:
+                    # Add to unified memory (episodic + KG fusion)
+                    self.unified_memory.add_event(f"Q: {q[:100]} A: {final[:100]}", importance=importance)
+            except Exception as e:
+                logger.debug("V10: Unified memory update failed: %s", e)
+
             # update emotion lightly and modulate tone (small influence preserved)
             try:
                 self.emotion.update(reward=0.03, pred_error=0.0, success=True, novelty=0.02)
@@ -565,3 +595,34 @@ class AGIAgentPro:
                 pass
 
             return answer
+
+    def adapt_llm_v10(self, task_name: str, examples: List[Tuple[str, str]]):
+        """V10: Fine-tune LLM adapter for specific task.
+        Args:
+            task_name: Name of the task (e.g., "math", "creative", "analytical")
+            examples: List of (input, expected_output) pairs for fine-tuning
+        """
+        try:
+            if self.llm_adapter:
+                # Register task-specific prompt template
+                task_template = f"You are helping with {task_name} tasks. Keep responses concise and accurate."
+                self.llm_adapter.register_prompt_template(task_name, task_template)
+                # Fine-tune on examples (if batch available)
+                if len(examples) > 0:
+                    self.llm_adapter.fine_tune_on_task(task_name, examples)
+                    logger.info("V10: LLM adapted for task '%s' with %d examples", task_name, len(examples))
+                    return True
+        except Exception as e:
+            logger.warning("V10: LLM adaptation failed: %s", e)
+        return False
+
+    def get_v10_metrics(self) -> Dict[str, Any]:
+        """Collect v10 proto-AGI metrics for monitoring."""
+        metrics = {
+            'meta_reasoning_traces': len(self.meta_reasoning.traces) if self.meta_reasoning else 0,
+            'self_modification_variants': len(self.self_modifier.history) if self.self_modifier else 0,
+            'continual_learner_buffer_size': self.continual_learner.buffer_size if self.continual_learner else 0,
+            'unified_memory_size': len(self.unified_memory.episodic.items) if self.unified_memory else 0,
+        }
+        return metrics
+
