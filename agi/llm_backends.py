@@ -88,6 +88,11 @@ def make_default_llm_manager(config, llama_model_path: str = None):
     m = LLMManager(config)
     if LLAMA_CPP_AVAILABLE and llama_model_path:
         m.register('llama_cpp', lambda p, max_tokens=256: llama_cpp_gen(p, max_tokens=max_tokens, model_path=llama_model_path))
-    # attempt to register GPT-2 lazily (may fail if transformers/torch not available)
-    _register_gpt2_if_available(m)
+    # attempt to register GPT-2 lazily only if explicitly enabled via env
+    try:
+        import os as _os
+        if _os.environ.get('AGI_ENABLE_GPT2', '').lower() in ('1', 'true', 'yes'):
+            _register_gpt2_if_available(m)
+    except Exception:
+        pass
     return m
