@@ -324,11 +324,12 @@ class AGIAgentPro:
                         f"Context: {(memory_summary if memory_summary else 'N/A')[:100]}",
                         f"Answer: {llm_resp[:100]}"
                     ]
-                    # Record reasoning trace
-                    trace = self.meta_reasoning.trace_reasoning(reasoning_steps, conclusion=llm_resp, confidence=0.85)
+                    # Record reasoning trace (API: steps, conclusion)
+                    trace = self.meta_reasoning.trace_reasoning(reasoning_steps, conclusion=llm_resp)
                     # Verify conclusion vs premises
-                    quality = self.meta_reasoning.verify_conclusion(trace)
-                    llm_quality_score = quality.get('quality_score', 1.0)
+                    is_valid, msg = self.meta_reasoning.verify_conclusion(trace)
+                    # Get quality score based on validity
+                    llm_quality_score = 1.0 if is_valid else 0.6
                     # If quality is low, flag for later adjustment
                     if llm_quality_score < 0.5:
                         logger.debug("V10: LLM response quality low (%.2f), may use memory instead", llm_quality_score)
