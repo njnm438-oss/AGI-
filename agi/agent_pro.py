@@ -305,6 +305,10 @@ class AGIAgentPro:
                             facts.append(str(c)[:200])
                     memory_summary_fallback = " | ".join(facts)
                     mem_text = "Based on my memories: " + memory_summary_fallback
+                    try:
+                        logger.debug("Using memory fallback: %s (items=%d)", memory_summary_fallback[:200], len(mem_items))
+                    except Exception:
+                        pass
                     candidates.append((mem_text, {'source': 'memory'}))
             except Exception:
                 pass
@@ -385,6 +389,10 @@ class AGIAgentPro:
                 else:
                     final = best_text.strip()
                     self._memory_dominance_count += 1
+                    try:
+                        logger.debug("Memory dominated final answer (no LLM candidate). memory_summary=%s", memory_summary[:200] if memory_summary else "(none)")
+                    except Exception:
+                        pass
             else:
                 # If LLM exists and memory also exists, blend them: prefer LLM as main answer
                 if best_meta.get('source') in ('gpt2', 'llm') and memory_summary:
@@ -393,6 +401,10 @@ class AGIAgentPro:
                     final = best_text.strip()
                     if best_meta.get('source') == 'memory':
                         self._memory_dominance_count += 1
+                        try:
+                            logger.debug("Memory dominated final answer (best_meta==memory). memory_summary=%s", memory_summary[:200] if memory_summary else "(none)")
+                        except Exception:
+                            pass
 
             # Final cleaning: remove internal markers and ensure not empty
             def clean_output(txt: str) -> str:
