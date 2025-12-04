@@ -363,7 +363,7 @@ class AGIAgentPro:
                         final = llm_text.strip()
                 else:
                     final = best_text.strip()
-                        self._memory_dominance_count += 1
+                    self._memory_dominance_count += 1
             else:
                 # If LLM exists and memory also exists, blend them: prefer LLM as main answer
                 if best_meta.get('source') in ('gpt2', 'llm') and memory_summary:
