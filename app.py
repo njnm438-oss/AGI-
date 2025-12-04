@@ -26,8 +26,40 @@ else:
 _train_iterations = 0
 _train_loss_avg = None
 _last_model_update = None
-_model_save_path = getattr(agent.config, 'model_save_path', 'world_model.pt')
+_model_save_path = getattr(agent.config, 'model_save_path', None)
+_runs_base = getattr(agent.config, 'runs_dir', 'runs')
+_current_run = None
+_best_loss = None
+_log_file = None
+_world_model_loaded = False
+import os
+import json as _json
+
+# Event to nudge learner to wake up when buffer grows
 _learner_wakeup = threading.Event()
+
+def _init_run_dir():
+    global _current_run, _model_save_path, _log_file, _world_model_loaded
+    try:
+        os.makedirs(_runs_base, exist_ok=True)
+        ts = int(time.time())
+        run_dir = os.path.join(_runs_base, f"run_{ts}")
+        os.makedirs(run_dir, exist_ok=True)
+        _current_run = run_dir
+        if _model_save_path is None:
+            _model_save_path = os.path.join(run_dir, 'world_model.pt')
+        _log_file = os.path.join(run_dir, 'train_log.jsonl')
+        try:
+            import torch as _torch
+            wm = getattr(agent, 'world_model', None)
+            if wm is not None:
+                _torch.save(wm.state_dict(), os.path.join(run_dir, 'world_model_init.pt'))
+                _world_model_loaded = True
+        except Exception:
+            pass
+    except Exception:
+        _current_run = None
+        _log_file = None
 
 def _collector_loop(interval=1.0):
     global _collector_count
@@ -102,20 +134,60 @@ def _learner_loop(interval=5.0, batch_size=32):
                     pass
                 _train_iterations += 1
 
-            # periodically save and reload model into agent
+            # periodically save and reload model into agent, log metrics
             try:
                 if _train_iterations % save_every == 0:
                     import torch as _torch
                     m = getattr(_learner, 'model', None)
                     if m is not None:
-                        _torch.save(m.state_dict(), _model_save_path)
-                        # reload into agent if possible
+                        # ensure run dir exists
+                        if _current_run is None:
+                            _init_run_dir()
+
+                        # save current checkpoint
+                        try:
+                            ckpt_path = _model_save_path or (os.path.join(_current_run, 'world_model.pt') if _current_run else None)
+                            if ckpt_path is not None:
+                                _torch.save(m.state_dict(), ckpt_path)
+                        except Exception:
+                            ckpt_path = None
+
+                        # save best if loss improved
+                        try:
+                            if _last_loss is not None:
+                                if _best_loss is None or float(_last_loss) < float(_best_loss):
+                                    if _current_run is not None:
+                                        best_path = os.path.join(_current_run, 'best_world_model.pt')
+                                        _torch.save(m.state_dict(), best_path)
+                                    _best_loss = float(_last_loss)
+                        except Exception:
+                            pass
+
+                        # reload into agent
                         try:
                             if hasattr(agent, 'world_model') and agent.world_model is not None:
                                 agent.world_model.load_state_dict(m.state_dict())
                             else:
                                 agent.world_model = m
                             _last_model_update = time.time()
+                            _world_model_loaded = True
+                        except Exception:
+                            pass
+
+                        # append log entry
+                        try:
+                            if _log_file is not None:
+                                entry = {
+                                    'ts': time.time(),
+                                    'train_iterations': _train_iterations,
+                                    'last_loss': _last_loss,
+                                    'train_loss_avg': _train_loss_avg,
+                                    'buffer_size': len(_replay),
+                                    'ckpt_path': ckpt_path,
+                                    'best_loss': _best_loss,
+                                }
+                                with open(_log_file, 'a') as f:
+                                    f.write(_json.dumps(entry) + "\n")
                         except Exception:
                             pass
             except Exception:
@@ -252,6 +324,19 @@ def status():
         'collector_count': _collector_count,
         'last_loss': _last_loss,
         'agent_running': getattr(agent, '_running', True)
+    })
+
+
+@app.route('/metrics')
+def metrics():
+    return jsonify({
+        'collector_count': _collector_count,
+        'buffer_size': len(_replay),
+        'train_iterations': _train_iterations,
+        'train_loss_avg': _train_loss_avg,
+        'last_loss': _last_loss,
+        'last_model_update': _last_model_update,
+        'world_model_loaded': bool(_world_model is not None and _world_model_loaded)
     })
 
 if __name__ == "__main__":
