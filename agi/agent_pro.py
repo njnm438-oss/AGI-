@@ -244,24 +244,44 @@ class AGIAgentPro:
             except Exception:
                 mem_items = []
             memory_summary = ""
-            if mem_items:
-                # produce concise memory summary candidate
-                facts = []
-                for m in mem_items[:4]:
-                    c = m.content
-                    if isinstance(c, dict) and 'text' in c:
-                        facts.append(c['text'][:200])
+            # Only use memory if we have at least 2 relevant items
+            if mem_items and len(mem_items) >= 2:
+                # compute similarity to top memory item; disable memory if weak match
+                try:
+                    top_emb = getattr(mem_items[0], 'embedding', None)
+                    similarity = 0.0
+                    if top_emb is not None and q_emb is not None:
+                        similarity = float(cosine(top_emb, q_emb))
                     else:
-                        facts.append(str(c)[:200])
-                memory_summary = " | ".join(facts)
-                mem_text = "Based on my memories: " + memory_summary
-                candidates.append((mem_text, {'source': 'memory'}))
+                        similarity = 0.0
+                except Exception:
+                    similarity = 0.0
+
+                if similarity >= 0.4:
+                    # produce concise memory summary candidate
+                    facts = []
+                    for m in mem_items[:4]:
+                        c = m.content
+                        if isinstance(c, dict) and 'text' in c:
+                            facts.append(c['text'][:200])
+                        else:
+                            facts.append(str(c)[:200])
+                    memory_summary = " | ".join(facts)
+                    # Only include memory candidate if we have a couple of attended items
+                    if len(mem_items) >= 2:
+                        mem_text = "Based on my memories: " + memory_summary
+                        candidates.append((mem_text, {'source': 'memory'}))
+                else:
+                    # weak similarity -> ignore memory
+                    memory_summary = ""
 
             # 3) LLM candidate (controlled) - ENSURE LLM always present
             try:
                 gen = self.llm.generate(question=q, context=(memory_summary if memory_summary else ""), max_new_tokens=120)
-                if gen:
-                    candidates.append((gen, {'source': 'gpt2'}))
+                if gen and len(gen.strip()) > 0:
+                    # Priority: if LLM returns a reasonable answer, prefer it immediately
+                    return gen.strip()
+                # else fallthrough
             except Exception:
                 # If LLM generation failed, still continue with other candidates
                 pass
