@@ -229,28 +229,28 @@ class KnowledgeGraph:
         """
         new_relations = []
         
-            # Transitivity: if has_part and located_in, then infer
-            # Collect edges to add first (avoid modifying during iteration)
-            edges_to_add = []
+        # Transitivity: if has_part and located_in, then infer
+        # Collect edges to add first (avoid modifying during iteration)
+        edges_to_add = []
         
-            nodes_list = list(self.graph.nodes())
-            for source in nodes_list:
-                successors_list = list(self.graph.successors(source))
-                for intermediate in successors_list:
-                    intermediate_successors = list(self.graph.successors(intermediate))
-                    for target in intermediate_successors:
-                        if not self.graph.has_edge(source, target):
-                            edges_to_add.append((source, target))
+        nodes_list = list(self.graph.nodes())
+        for source in nodes_list:
+            successors_list = list(self.graph.successors(source))
+            for intermediate in successors_list:
+                intermediate_successors = list(self.graph.successors(intermediate))
+                for target in intermediate_successors:
+                    if not self.graph.has_edge(source, target):
+                        edges_to_add.append((source, target))
         
-            # Now add edges
-            for source, target in edges_to_add:
-                self.graph.add_edge(source, target, predicate="inferred", weight=0.5, evidence=[])
+        # Now add edges
+        for source, target in edges_to_add:
+            self.graph.add_edge(source, target, predicate="inferred", weight=0.5, evidence=[])
             
-                source_label = self.concepts[source].label if source in self.concepts else "?"
-                target_label = self.concepts[target].label if target in self.concepts else "?"
+            source_label = self.concepts[source].label if source in self.concepts else "?"
+            target_label = self.concepts[target].label if target in self.concepts else "?"
             
-                rel = Relation(source=source, target=target, predicate="inferred", weight=0.5)
-                new_relations.append(rel)
+            rel = Relation(source=source, target=target, predicate="inferred", weight=0.5)
+            new_relations.append(rel)
         
         if new_relations:
             self._save()
